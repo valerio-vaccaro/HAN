@@ -52,4 +52,6 @@ Mkfile.old
 dkms.conf
 
 # local project
-configs.h
+src/configs.h
+.pio/
+.vscode/
