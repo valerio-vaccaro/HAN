@@ -131,7 +131,7 @@ void runWorker(void *name) {
     String prevhash = String((const char*) doc["params"][1]);
     String coinb1 = String((const char*) doc["params"][2]);
     String coinb2 = String((const char*) doc["params"][3]);
-    String merkle_branch = String((const char*) doc["params"][4]); //array
+    JsonArray merkle_branch = doc["params"][4];
     String version = String((const char*) doc["params"][5]);
     String nbits = String((const char*) doc["params"][6]);
     String ntime = String((const char*) doc["params"][7]);
@@ -140,7 +140,7 @@ void runWorker(void *name) {
     Serial.print("prevhash: "); Serial.println(prevhash);
     Serial.print("coinb1: "); Serial.println(coinb1);
     Serial.print("coinb2: "); Serial.println(coinb2);
-    Serial.print("merkle_branch: "); Serial.println(merkle_branch);
+    Serial.print("merkle_branch size: "); Serial.println(merkle_branch.size());
     Serial.print("version: "); Serial.println(version);
     Serial.print("nbits: "); Serial.println(nbits);
     Serial.print("ntime: "); Serial.println(ntime);
@@ -221,7 +221,44 @@ void runWorker(void *name) {
     #little endian
     merkle_root = ''.join([merkle_root[i]+merkle_root[i+1] for i in range(0,len(merkle_root),2)][::-1])
     */
-    String merkle_root = String("00000000000000000000000000000000000000000000000000000000000000aa");
+    byte merkle_result[32];
+    // copy coinbase hash
+    for (size_t i = 0; i < 32; i++)
+      merkle_result[i] = shaResult[i];
+    
+    byte merkle_concatenated[32 * 2];
+    for (size_t k=0; k<merkle_branch.size(); k++) {
+        const char* merkle_element = (const char*) merkle_branch[k];
+        uint8_t bytearray[32];
+        size_t res = to_byte_array(merkle_element, 64, bytearray);
+
+        Serial.print("\tmerkle element    "); Serial.print(k); Serial.print(": "); Serial.println(merkle_element);
+        for (size_t i = 0; i < 32; i++) {
+          merkle_concatenated[i] = merkle_result[i];
+          merkle_concatenated[32 + i] = bytearray[i];
+        }
+        Serial.print("\tmerkle concatenated: ");
+        for (size_t i = 0; i < 64; i++)
+            Serial.printf("%02x", merkle_concatenated[i]);
+        Serial.println("");
+            
+        mbedtls_md_starts(&ctx);
+        mbedtls_md_update(&ctx, merkle_concatenated, 64);
+        mbedtls_md_finish(&ctx, interResult);
+
+        mbedtls_md_starts(&ctx);
+        mbedtls_md_update(&ctx, interResult, 32);
+        mbedtls_md_finish(&ctx, merkle_result);
+
+        Serial.print("\tmerkle sha         : ");
+        for (size_t i = 0; i < 32; i++)
+            Serial.printf("%02x", merkle_result[i]);
+        Serial.println("");
+    }
+    // merkle root from merkle_result
+    String merkle_root = String("");
+    for (int i=0; i<32; i++)
+      merkle_root = merkle_root + String(merkle_result[i], HEX);
 
     // create block header
     uint8_t dest_buff[80];
