@@ -451,7 +451,7 @@ void setup(){
   M5.Lcd.println(" longer than the current age");
   M5.Lcd.println(" of the universe to find a ");
   M5.Lcd.println(" valid block."); M5.Lcd.setTextColor(WHITE);
-  M5.Lcd.drawLine(0,180,320,180,GREENYELLOW);
+  M5.Lcd.drawLine(0,200,320,200,GREENYELLOW);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
