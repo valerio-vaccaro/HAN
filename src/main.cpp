@@ -1,24 +1,3 @@
-/*
-    nonce   = hex(random.randint(0,2**32-1))[2:].zfill(8)   #hex(int(nonce,16)+1)[2:]
-    blockheader = version + prevhash + merkle_root + nbits + ntime + nonce +\
-        '000000800000000000000000000000000000000000000000000000000000000000000000000000000000000080020000'
-    
-    hash = hashlib.sha256(hashlib.sha256(binascii.unhexlify(blockheader)).digest()).digest()
-    hash = binascii.hexlify(hash).decode()
-    if(hash[:5] == '00000'): print('hash: {}'.format(hash))
-    if hash < target :
-        print('success!!')
-        print('hash: {}'.format(hash))
-        payload = bytes('{"params": ["'+address+'", "'+job_id+'", "'+extranonce2 \
-            +'", "'+ntime+'", "'+nonce+'"], "id": 1, "method": "mining.submit"}\n', 'utf-8')
-        sock.sendall(payload)
-        print(sock.recv(1024))*//*
-    }
-    client.stop();
-    delay(100000);
-}
-*/
-
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <M5Stack.h>
@@ -29,31 +8,59 @@
 
 long templates = 0;
 long hashes = 0;
+int halfshares = 0; // increase if blockhash has 16 bits of zeroes
 int shares = 0; // increase if blockhash has 32 bits of zeroes
 int valids = 0; // increased if blockhash <= target
 
-bool checkShare(unsigned char* string) {
+bool checkHalfShare(unsigned char* hash) {
   bool valid = true;
-  for(uint8_t i=31; i>31-4; i--) {
-    if(string[i] != 0)
+  for(uint8_t i=31; i>31-2; i--) {
+    if(hash[i] != 0) {
       valid = false;
+      break;
+    }
   }
   if (valid) {
-    Serial.print("\tshare : ");
+    Serial.print("\thalf share : ");
     for (size_t i = 0; i < 32; i++)
-        Serial.printf("%02x ", string[i]);
+        Serial.printf("%02x ", hash[i]);
     Serial.println();
   }
   return valid;
 }
 
-bool checkValid(unsigned char* string, unsigned char* target) {
+bool checkShare(unsigned char* hash) {
   bool valid = true;
-  valid = false;
+  for(uint8_t i=31; i>31-4; i--) {
+    if(hash[i] != 0) {
+      valid = false;
+      break;
+    }
+  }
+  if (valid) {
+    Serial.print("\tshare : ");
+    for (size_t i = 0; i < 32; i++)
+        Serial.printf("%02x ", hash[i]);
+    Serial.println();
+  }
+  return valid;
+}
+
+bool checkValid(unsigned char* hash, unsigned char* target) {
+  bool valid = true;
+  for(uint8_t i=31; i>=0; i--) {
+    if(hash[i] > target[i]) {
+      valid = false;
+      break;
+    } else if (hash[i] < target[i]) {
+      valid = true;
+      break;
+    }
+  }
   if (valid) {
     Serial.print("\tvalid : ");
     for (size_t i = 0; i < 32; i++)
-        Serial.printf("%02x ", string[i]);
+        Serial.printf("%02x ", hash[i]);
     Serial.println();
   }
   return valid;
@@ -161,6 +168,15 @@ void runWorker(void *name) {
       target = String("0") + target;
     }
     Serial.print("target: "); Serial.println(target);
+    // bytearray target
+    uint8_t bytearray_target[32];
+    size_t size_target = to_byte_array(target.c_str(), 32, bytearray_target);
+    uint8_t buf;
+    for (size_t j = 0; j < 16; j++) {
+        buf = bytearray_target[j];
+        bytearray_target[j] = bytearray_target[size_target - 1 - j];
+        bytearray_target[size_target - 1 - j] = buf;
+    }
 
     // get extranonce2 - extranonce2 = hex(random.randint(0,2**32-1))[2:].zfill(2*extranonce2_size)
     uint32_t extranonce2_a_bin = esp_random();
@@ -212,15 +228,6 @@ void runWorker(void *name) {
         Serial.printf("%02x ", shaResult[i]);
     Serial.println("");
 
-    /*
-    merkle_root = coinbase_hash_bin
-    for h in merkle_branch:
-        merkle_root = hashlib.sha256(hashlib.sha256(merkle_root + binascii.unhexlify(h)).digest()).digest()
-
-    merkle_root = binascii.hexlify(merkle_root).decode()
-    #little endian
-    merkle_root = ''.join([merkle_root[i]+merkle_root[i+1] for i in range(0,len(merkle_root),2)][::-1])
-    */
     byte merkle_result[32];
     // copy coinbase hash
     for (size_t i = 0; i < 32; i++)
@@ -323,18 +330,6 @@ void runWorker(void *name) {
         Serial.printf("%02x ", bytearray_blockheader[i]);
     Serial.println("");
 
-    // fake values
-    // Header of Bitcoin block nr. 563333
-    /*byte payload[] = {
-      0x0, 0x0, 0x0, 0x20, // version
-      0xa2, 0x17, 0x62, 0x4e, 0xf7, 0x72, 0x1b, 0x95, 0x4c, 0x7d, 0x93, 0x75, 0xaa, 0x85, 0xc1, 0x34, 0xe5, 0xb7, 0x66, 0xd2, 0x26, 0xa, 0x2c, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // prev hash
-      0xa5, 0x12, 0x42, 0x48, 0xfa, 0x62, 0xcb, 0xef, 0x22, 0xc1, 0x26, 0x8c, 0xc0, 0x24, 0x86, 0xec, 0xfb, 0x5, 0xc2, 0x6d, 0x45, 0xba, 0x42, 0xff, 0x7e, 0x9b, 0x34, 0x6c, 0x0, 0xdf, 0x60, 0xaf, // merkle root
-      0x5d, 0x80, 0x68, 0x5c, // time (2019-02-16)
-      0x88, 0x6f, 0x2e, 0x17, // difficulty bits
-      0x94, 0x4b, 0x40, 0x19 // nonce
-    };
-    const size_t payloadLength = 80;*/
-
     // search a valid nonce
     uint32_t nonce = 0;
     uint32_t startT = micros();
@@ -353,22 +348,29 @@ void runWorker(void *name) {
       mbedtls_md_update(&ctx, interResult, 32);
       mbedtls_md_finish(&ctx, shaResult);
 
-      // check if valid header
-      if(checkShare(shaResult)) {
+      // check if half share
+      if(checkHalfShare(shaResult)) {
         Serial.printf("%s on core %d: ", (char *)name, xPortGetCoreID());
-        Serial.printf("Share completed with nonce: %d | 0x%x\n", nonce, nonce);
-        shares++;
+        Serial.printf("Half share completed with nonce: %d | 0x%x\n", nonce, nonce);
+        halfshares++;
+        // check if share
+        if(checkShare(shaResult)) {
+          Serial.printf("%s on core %d: ", (char *)name, xPortGetCoreID());
+          Serial.printf("Share completed with nonce: %d | 0x%x\n", nonce, nonce);
+          shares++;
+        }
       }
       
       // check if valid header
-      if(checkValid(shaResult, (unsigned char*)target.c_str())) {
+      if(checkValid(shaResult, bytearray_target)) {
         Serial.printf("%s on core %d: ", (char *)name, xPortGetCoreID());
         Serial.printf("Valid completed with nonce: %d | 0x%x\n", nonce, nonce);
         valids++;
-        /*payload = bytes('{"params": ["'+address+'", "'+job_id+'", "'+extranonce2 \
-            +'", "'+ntime+'", "'+nonce+'"], "id": 1, "method": "mining.submit"}\n', 'utf-8')
-        sock.sendall(payload)*/
-
+        payload = String("{\"params\": [\"") + ADDRESS + String("\", \"") + job_id + String("\", \"") + extranonce2 + String("\", \"") + ntime + String("\", \"") + nonce +String("\"], \"id\": 1, \"method\": \"mining.submit\"");
+        Serial.print("Sending  : "); Serial.println(payload);
+        client.print(payload.c_str());
+        line  = client.readStringUntil('\n');
+        Serial.print("Receiving: "); Serial.println(line);
         // exit 
         nonce = MAX_NONCE;
         break;
@@ -412,10 +414,11 @@ void runMonitor(void *name) {
     M5.Lcd.print("Running time : "); M5.Lcd.setTextColor(GREEN); M5.Lcd.print(String(elapsed/1000/60)); M5.Lcd.setTextColor(WHITE); M5.Lcd.print(" m "); M5.Lcd.setTextColor(GREEN); M5.Lcd.print(String((elapsed/1000)%60)); M5.Lcd.setTextColor(WHITE); M5.Lcd.println(" s");
     M5.Lcd.print("Total hashes : "); M5.Lcd.setTextColor(GREEN); M5.Lcd.print(String(hashes/1000000)); M5.Lcd.setTextColor(WHITE); M5.Lcd.println(" M");
     M5.Lcd.print("Block templ. : "); M5.Lcd.setTextColor(YELLOW); M5.Lcd.println(String(templates)); M5.Lcd.setTextColor(WHITE);
+    M5.Lcd.print("Shares 16bits: "); M5.Lcd.setTextColor(YELLOW); M5.Lcd.println(String(halfshares)); M5.Lcd.setTextColor(WHITE);
     M5.Lcd.print("Shares 32bits: "); M5.Lcd.setTextColor(YELLOW); M5.Lcd.println(String(shares)); M5.Lcd.setTextColor(WHITE);
     M5.Lcd.print("Valid blocks : "); M5.Lcd.setTextColor(RED); M5.Lcd.println(String(valids)); M5.Lcd.setTextColor(WHITE);
     M5.Lcd.println("");
-    M5.Lcd.drawLine(0,180,320,180,GREENYELLOW);
+    M5.Lcd.drawLine(0,200,320,200,GREENYELLOW);
     M5.Lcd.print("Pool: "); M5.Lcd.setTextColor(GREENYELLOW); M5.Lcd.print(POOL_URL); M5.Lcd.print(":"); M5.Lcd.println(POOL_PORT); M5.Lcd.setTextColor(WHITE);
     M5.Lcd.print("IP  : "); M5.Lcd.setTextColor(GREENYELLOW); M5.Lcd.println(WiFi.localIP()); M5.Lcd.setTextColor(WHITE);
     M5.Lcd.println("");
