@@ -1,7 +1,7 @@
 # HAN
 Han: ANother SOLOminer
 
-![main screen](https://github.com/valerio-vaccaro/HAN/raw/main/sceenshots/main.jpeg)
+![main screen](https://github.com/valerio-vaccaro/HAN/raw/main/screenshots/main.jpeg)
 
 WARNING: you may have to wait longer than the current age of the universe to find a valid block.
 
