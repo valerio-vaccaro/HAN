@@ -10,6 +10,8 @@ HAN is a solo miner in a M5stack, using the ckpool.
 
 HAN is multicore and multithreads, each thread mine a different block template. After 1,000,000 trials the block in refreshed in order to avoid mining on old template.
 
+Community available on telegram channel [t.me/hansolominer](https://t.me/hansolominer).
+
 ## Configurations
 All configurations are saved in the file `config.h`.
 
