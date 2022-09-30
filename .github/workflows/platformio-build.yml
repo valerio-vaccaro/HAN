@@ -15,3 +15,8 @@ jobs:
           silent: false
           verbose: true
           disable-auto-clean: false
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: builded artifacts
+          path: .pio/build/*
