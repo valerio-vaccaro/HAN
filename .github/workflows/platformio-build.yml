@@ -1,0 +1,17 @@
+name: PlatformIO
+
+on: pull_request
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: PlatformIO Run
+        uses: karniv00l/platformio-run-action@v1
+        with:
+          project-conf: "platformio.ini"
+          silent: false
+          verbose: true
+          disable-auto-clean: false
