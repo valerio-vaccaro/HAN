@@ -32,3 +32,6 @@ Funds will go to the address writte in `ADDRESS`.
 - move on esp-idf
 - log on sdcard
 
+## Install from website
+Use [valerio-vaccaro.github.io/diyflasher/](https://valerio-vaccaro.github.io/diyflasher/) and install binaries on your board.
+
