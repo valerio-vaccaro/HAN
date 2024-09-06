@@ -262,10 +262,13 @@ void runWorker(void *name) {
             Serial.printf("%02x", merkle_result[i]);
         Serial.println("");
     }
-    // merkle root from merkle_result
+    // merkle root from merkle_result / fix the https://github.com/valerio-vaccaro/HAN/issues/3
     String merkle_root = String("");
-    for (int i=0; i<32; i++)
-      merkle_root = merkle_root + String(merkle_result[i], HEX);
+    char buffer[3];  // 2 characters for hex, 1 for null terminator
+    for (int i = 0; i < 32; i++) {
+      snprintf(buffer, sizeof(buffer), "%02x", merkle_result[i]);  // Always format with two hex digits
+      merkle_root = merkle_root + String(buffer);
+    }
 
     // create block header
     uint8_t dest_buff[80];
